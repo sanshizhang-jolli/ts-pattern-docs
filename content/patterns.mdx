@@ -1,0 +1,663 @@
+## Patterns
+
+A pattern is a description of the expected shape of your input value.
+
+Patterns can be regular JavaScript values (`"some string"`, `10`, `true`, ...), data structures ([objects](#objects), [arrays](#tuples-arrays), ...), wildcards ([`P._`](#p_-wildcard), [`P.string`](#pstring-wildcard), [`P.number`](#pnumber-wildcard), ...), or special matcher functions ([`P.not`](#pnot-patterns),
+[`P.when`](#pwhen-patterns), [`P.select`](#pselect-patterns), ...).
+
+All wildcards and matcher functions can be imported either as `Pattern` or as `P` from the `ts-pattern` module.
+
+```ts
+import { match, Pattern } from 'ts-pattern';
+
+const toString = (value: unknown): string =>
+  match(value)
+    .with(Pattern.string, (str) => str)
+    .with(Pattern.number, (num) => num.toFixed(2))
+    .with(Pattern.boolean, (bool) => `${bool}`)
+    .otherwise(() => 'Unknown');
+```
+
+Or
+
+```ts
+import { match, P } from 'ts-pattern';
+
+const toString = (value: unknown): string =>
+  match(value)
+    .with(P.string, (str) => str)
+    .with(P.number, (num) => num.toFixed(2))
+    .with(P.boolean, (bool) => `${bool}`)
+    .otherwise(() => 'Unknown');
+```
+
+If your input isn't typed, (if it's a `any` or a `unknown`), you are free to use any possible pattern. Your handler will infer the input type from the shape of your pattern.
+
+### Literals
+
+Literals are primitive JavaScript values, like `numbers`, `strings`, `booleans`, `bigints`, `symbols`, `null`, `undefined`, or `NaN`.
+
+```ts
+import { match } from 'ts-pattern';
+
+const input: unknown = 2;
+
+const output = match(input)
+  .with(2, () => 'number: two')
+  .with(true, () => 'boolean: true')
+  .with('hello', () => 'string: hello')
+  .with(undefined, () => 'undefined')
+  .with(null, () => 'null')
+  .with(NaN, () => 'number: NaN')
+  .with(20n, () => 'bigint: 20n')
+  .otherwise(() => 'something else');
+
+console.log(output);
+// => 'number: two'
+```
+
+### Objects
+
+Patterns can be objects containing sub-patterns. An object pattern will match
+If and only if the input value **is an object**, contains **all properties** the pattern defines
+and each property **matches** the corresponding sub-pattern.
+
+```ts
+import { match } from 'ts-pattern';
+
+type Input =
+  | { type: 'user'; name: string }
+  | { type: 'image'; src: string }
+  | { type: 'video'; seconds: number };
+
+let input: Input = { type: 'user', name: 'Gabriel' };
+
+const output = match(input)
+  .with({ type: 'image' }, () => 'image')
+  .with({ type: 'video', seconds: 10 }, () => 'video of 10 seconds.')
+  .with({ type: 'user' }, ({ name }) => `user of name: ${name}`)
+  .otherwise(() => 'something else');
+
+console.log(output);
+// => 'user of name: Gabriel'
+```
+
+### Tuples (arrays)
+
+In TypeScript, [Tuples](https://en.wikipedia.org/wiki/Tuple) are arrays with a fixed
+number of elements that can be of different types. You can pattern-match on tuples
+using a tuple pattern. A tuple pattern will match if the input value **is an array of the same length**,
+and each item matches the corresponding sub-pattern.
+
+```ts
+import { match, P } from 'ts-pattern';
+
+type Input =
+  | [number, '+', number]
+  | [number, '-', number]
+  | [number, '*', number]
+  | ['-', number];
+
+const input = [3, '*', 4] as Input;
+
+const output = match(input)
+  .with([P._, '+', P._], ([x, , y]) => x + y)
+  .with([P._, '-', P._], ([x, , y]) => x - y)
+  .with([P._, '*', P._], ([x, , y]) => x * y)
+  .with(['-', P._], ([, x]) => -x)
+  .exhaustive();
+
+console.log(output);
+// => 12
+```
+
+### Wildcards
+
+#### `P._` wildcard
+
+The `P._` pattern will match any value. You can also use `P.any`, which is an alias to `P._`.
+
+```ts
+import { match, P } from 'ts-pattern';
+
+const input = 'hello';
+
+const output = match(input)
+  .with(P._, () => 'It will always match')
+  // OR
+  .with(P.any, () => 'It will always match')
+  .otherwise(() => 'This string will never be used');
+
+console.log(output);
+// => 'It will always match'
+```
+
+#### `P.string` wildcard
+
+The `P.string` pattern will match any value of type `string`.
+
+```ts
+import { match, P } from 'ts-pattern';
+
+const input = 'hello';
+
+const output = match(input)
+  .with('bonjour', () => 'Won‘t match')
+  .with(P.string, () => 'it is a string!')
+  .exhaustive();
+
+console.log(output);
+// => 'it is a string!'
+```
+
+#### `P.number` wildcard
+
+The `P.number` pattern will match any value of type `number`.
+
+```ts
+import { match, P } from 'ts-pattern';
+
+const input = 2;
+
+const output = match<number | string>(input)
+  .with(P.string, () => 'it is a string!')
+  .with(P.number, () => 'it is a number!')
+  .exhaustive();
+
+console.log(output);
+// => 'it is a number!'
+```
+
+#### `P.boolean` wildcard
+
+The `P.boolean` pattern will match any value of type `boolean`.
+
+```ts
+import { match, P } from 'ts-pattern';
+
+const input = true;
+
+const output = match<number | string | boolean>(input)
+  .with(P.string, () => 'it is a string!')
+  .with(P.number, () => 'it is a number!')
+  .with(P.boolean, () => 'it is a boolean!')
+  .exhaustive();
+
+console.log(output);
+// => 'it is a boolean!'
+```
+
+#### `P.nullish` wildcard
+
+The `P.nullish` pattern will match any value of type `null` or `undefined`.
+
+Even though `null` and `undefined` can be used as literal patterns, sometimes they appear in a union together
+(e.g. `null | undefined | string`) and you may want to treat them as equivalent using `P.nullish`.
+
+```ts
+import { match, P } from 'ts-pattern';
+
+const input = null;
+
+const output = match<number | null | undefined>(input)
+  .with(P.number, () => 'it is a number!')
+  .with(P.nullish, () => 'it is either null or undefined!')
+  .exhaustive();
+
+console.log(output);
+// => 'it is either null or undefined!'
+```
+
+#### `P.nonNullable` wildcard
+
+The `P.nonNullable` pattern will match any value except `null` or `undefined`.
+
+```ts
+import { match, P } from 'ts-pattern';
+
+const input = null;
+
+const output = match<number | null | undefined>(input)
+  .with(P.nonNullable, () => 'it is a number!')
+  .otherwise(() => 'it is either null or undefined!');
+
+console.log(output);
+// => 'it is either null or undefined!'
+```
+
+#### `P.bigint` wildcard
+
+The `P.bigint` pattern will match any value of type `bigint`.
+
+```ts
+import { match, P } from 'ts-pattern';
+
+const input = 20000000n;
+
+const output = match<bigint | null>(input)
+  .with(P.bigint, () => 'it is a bigint!')
+  .otherwise(() => '?');
+
+console.log(output);
+// => 'it is a bigint!'
+```
+
+#### `P.symbol` wildcard
+
+The `P.symbol` pattern will match any value of type `symbol`.
+
+```ts
+import { match, P } from 'ts-pattern';
+
+const input = Symbol('some symbol');
+
+const output = match<symbol | null>(input)
+  .with(P.symbol, () => 'it is a symbol!')
+  .otherwise(() => '?');
+
+console.log(output);
+// => 'it is a symbol!'
+```
+
+### `P.array` patterns
+
+To match on arrays of unknown size, you can use `P.array(subpattern)`.
+It takes a sub-pattern, and will match if **all elements** in the input
+array match this sub-pattern.
+
+```ts
+import { match, P } from 'ts-pattern';
+
+type Input = { title: string; content: string }[];
+
+let input: Input = [
+  { title: 'Hello world!', content: 'This is a very interesting content' },
+  { title: 'Bonjour!', content: 'This is a very interesting content too' },
+];
+
+const output = match(input)
+  .with(
+    P.array({ title: P.string, content: P.string }),
+    (posts) => 'a list of posts!'
+  )
+  .otherwise(() => 'something else');
+
+console.log(output);
+// => 'a list of posts!'
+```
+
+### Matching variadic tuples with `P.array`
+
+In TypeScript, [Variadic Tuple Types](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-0.html#variadic-tuple-types) are array types created with the `...` spread operator, like `[string, ...string[]]`, `[number, ...boolean[], string]` etc. You can match against variadic tuple types using array literals containing `...P.array(subpattern)`:
+
+```ts
+import { match, P } from 'ts-pattern';
+
+type Input = (number | string)[];
+
+declare const input: Input;
+
+const output = match(input)
+  // P.array's parameter is optional
+  .with([P.string, ...P.array()], (input) => input) // input: [string, ...(number | string)[]]
+  .with(['print', ...P.array(P.string)], (input) => input) // input: ['print', ...string[]]
+  // you can put patterns on either side of `...P.array()`:
+  .with([...P.array(P.string), 'end'], (input) => input) // input: [...string[], 'end']
+  .with(['start', ...P.array(P.string), 'end'], (input) => input) // input: ['start', ...string[], 'end']
+  .otherwise((input) => input);
+```
+
+### `P.record` patterns
+
+To match a `Record<Key, Value>` (an object with consistent key and value types), you can use `P.record(keyPattern, valuePattern)`.
+It takes a sub-pattern to match against the key, a sub-pattern to match against the value, and will match if **all entries** in the object
+match these two sub-patterns.
+
+```ts
+import { match, P } from 'ts-pattern';
+
+type Input = Record<string, number>;
+
+const input: Input = {
+  alice: 100,
+  bob: 85,
+  charlie: 92,
+};
+
+const output = match(input)
+  .with(P.record(P.string, P.number), (scores) => `All user scores`)
+  .with(P.record(P.string, P.string), (names) => `All user names`)
+  .otherwise(() => '');
+
+console.log(output);
+// => "All user scores"
+```
+
+You can also use `P.record` with a single argument `P.record(valuePattern)`, which assumes string keys:
+
+```ts
+const userProfiles = {
+  alice: { name: 'Alice', age: 25 },
+  bob: { name: 'Bob', age: 30 },
+};
+
+const output = match(userProfiles)
+  .with(
+    P.record({ name: P.string, age: P.number }),
+    (profiles) => `User profiles with name and age`
+  )
+  .otherwise(() => 'Different format');
+
+console.log(output);
+// => "User profiles with name and age"
+```
+
+When using `P.select` in record patterns, you can extract all keys or all values as arrays:
+
+```ts
+const data = { a: 1, b: 2, c: 3 };
+
+const keys = match(data)
+  .with(P.record(P.string.select(), P.number), (keys) => keys)
+  .otherwise(() => []);
+
+const values = match(data)
+  .with(P.record(P.string, P.number.select()), (values) => values)
+  .otherwise(() => []);
+
+console.log(keys); // => ['a', 'b', 'c']
+console.log(values); // => [1, 2, 3]
+```
+
+### `P.set` patterns
+
+To match a Set, you can use `P.set(subpattern)`.
+It takes a sub-pattern, and will match if **all elements** inside the set
+match this sub-pattern.
+
+```ts
+import { match, P } from 'ts-pattern';
+
+type Input = Set<string | number>;
+
+const input: Input = new Set([1, 2, 3]);
+
+const output = match(input)
+  .with(P.set(1), (set) => `Set contains only 1`)
+  .with(P.set(P.string), (set) => `Set contains only strings`)
+  .with(P.set(P.number), (set) => `Set contains only numbers`)
+  .otherwise(() => '');
+
+console.log(output);
+// => "Set contains only numbers"
+```
+
+### `P.map` patterns
+
+To match a Map, you can use `P.map(keyPattern, valuePattern)`.
+It takes a subpattern to match against the key, a subpattern to match agains the value, and will match if **all elements** inside this map
+match these two sub-patterns.
+
+```ts
+import { match, P } from 'ts-pattern';
+
+type Input = Map<string, string | number>;
+
+const input: Input = new Map([
+  ['a', 1],
+  ['b', 2],
+  ['c', 3],
+]);
+
+const output = match(input)
+  .with(P.map(P.string, P.number), (map) => `map's type is Map<string, number>`)
+  .with(P.map(P.string, P.string), (map) => `map's type is Map<string, string>`)
+  .with(
+    P.map(P.union('a', 'c'), P.number),
+    (map) => `map's type is Map<'a' | 'c', number>`
+  )
+  .otherwise(() => '');
+
+console.log(output);
+// => "map's type is Map<string, number>"
+```
+
+### `P.when` patterns
+
+`P.when` lets you define your own logic to check if the pattern should match or not.
+If the `predicate` function given to when returns a truthy value, then the pattern
+will match for this input.
+
+Note that you can narrow down the type of your input by providing a
+[Type Guard function](https://www.typescriptlang.org/docs/handbook/advanced-types.html#user-defined-type-guards) to `P.when`.
+
+```ts
+import { match, P } from 'ts-pattern';
+
+type Input = { score: number };
+
+const output = match<Input>({ score: 10 })
+  .with(
+    {
+      score: P.when((score): score is 5 => score === 5),
+    },
+    (input) => '😐' // input is inferred as { score: 5 }
+  )
+  .with({ score: P.when((score) => score < 5) }, () => '😞')
+  .otherwise(() => '🙂');
+
+console.log(output);
+// => '🙂'
+```
+
+### `P.not` patterns
+
+`P.not` lets you match on everything **but** a specific value.
+it's a function taking a pattern and returning the opposite pattern.
+
+```ts
+import { match, P } from 'ts-pattern';
+
+type Input = boolean | number;
+
+const toNumber = (input: Input) =>
+  match(input)
+    .with(P.not(P.boolean), (n) => n) // n: number
+    .with(true, () => 1)
+    .with(false, () => 0)
+    .exhaustive();
+
+console.log(toNumber(2));
+// => 2
+console.log(toNumber(true));
+// => 1
+```
+
+### `P.select` patterns
+
+`P.select` lets you pick a piece of your input data-structure
+and injects it in your handler function.
+
+It's especially useful when pattern matching on deep data structure to
+avoid the hassle of destructuring it in the handler function.
+
+Selections can be either named (with `P.select('someName')`) or anonymous (with `P.select()`).
+
+You can have only one anonymous selection by pattern, and the selected value will be directly inject in your handler as first argument:
+
+```ts
+import { match, P } from 'ts-pattern';
+
+type Input =
+  | { type: 'post'; user: { name: string } }
+  | { ... };
+
+const input: Input = { type: 'post', user: { name: 'Gabriel' } }
+
+const output = match(input)
+    .with(
+      { type: 'post', user: { name: P.select() } },
+      username => username // username: string
+    )
+    .otherwise(() => 'anonymous');
+
+console.log(output);
+// => 'Gabriel'
+```
+
+If you need to select several things inside your input data structure, you can name your selections by giving a string to `P.select(<name>)`. Each selection will be passed as first argument to your handler in an object.
+
+```ts
+import { match, P } from 'ts-pattern';
+
+type Input =
+  | { type: 'post'; user: { name: string }, content: string }
+  | { ... };
+
+const input: Input = { type: 'post', user: { name: 'Gabriel' }, content: 'Hello!' }
+
+const output = match(input)
+    .with(
+      { type: 'post', user: { name: P.select('name') }, content: P.select('body') },
+      ({ name, body }) => `${name} wrote "${body}"`
+    )
+    .otherwise(() => '');
+
+console.log(output);
+// => 'Gabriel wrote "Hello!"'
+```
+
+You can also pass a sub-pattern to `P.select` if you want it to only
+select values which match this sub-pattern:
+
+```ts
+type User = { age: number; name: string };
+type Post = { body: string };
+type Input = { author: User; content: Post };
+
+declare const input: Input;
+
+const output = match(input)
+  .with(
+    {
+      author: P.select({ age: P.number.gt(18) }),
+    },
+    (author) => author // author: User
+  )
+  .with(
+    {
+      author: P.select('author', { age: P.number.gt(18) }),
+      content: P.select(),
+    },
+    ({ author, content }) => author // author: User, content: Post
+  )
+  .otherwise(() => 'anonymous');
+```
+
+### `P.optional` patterns
+
+`P.optional(subpattern)` lets you annotate a key in an object pattern as being optional,
+but if it is defined it should match a given sub-pattern.
+
+```ts
+import { match, P } from 'ts-pattern';
+
+type Input = { key?: string | number };
+
+const output = match(input)
+  .with({ key: P.optional(P.string) }, (a) => {
+    return a.key; // string | undefined
+  })
+  .with({ key: P.optional(P.number) }, (a) => {
+    return a.key; // number | undefined
+  })
+  .exhaustive();
+```
+
+### `P.instanceOf` patterns
+
+The `P.instanceOf` function lets you build a pattern to check if
+a value is an instance of a class:
+
+```ts
+import { match, P } from 'ts-pattern';
+
+class A {
+  a = 'a';
+}
+class B {
+  b = 'b';
+}
+
+type Input = { value: A | B };
+
+const input: Input = { value: new A() };
+
+const output = match(input)
+  .with({ value: P.instanceOf(A) }, (a) => {
+    return 'instance of A!';
+  })
+  .with({ value: P.instanceOf(B) }, (b) => {
+    return 'instance of B!';
+  })
+  .exhaustive();
+
+console.log(output);
+// => 'instance of A!'
+```
+
+### `P.union` patterns
+
+`P.union(...subpatterns)` lets you test several patterns and will match if
+one of these patterns do. It's particularly handy when you want to handle
+some cases of a union type in the same code branch:
+
+```ts
+import { match, P } from 'ts-pattern';
+
+type Input =
+  | { type: 'user'; name: string }
+  | { type: 'org'; name: string }
+  | { type: 'text'; content: string }
+  | { type: 'img'; src: string };
+
+declare const input: Input;
+
+const output = match(input)
+  .with({ type: P.union('user', 'org') }, (userOrOrg) => {
+    // userOrOrg: User | Org
+    return userOrOrg.name;
+  })
+  .otherwise(() => '');
+```
+
+### `P.intersection` patterns
+
+`P.intersection(...subpatterns)` lets you ensure that the input matches
+**all** sub-patterns passed as parameters.
+
+```ts
+class A {
+  constructor(public foo: 'bar' | 'baz') {}
+}
+
+class B {
+  constructor(public str: string) {}
+}
+
+type Input = { prop: A | B };
+
+declare const input: Input;
+
+const output = match(input)
+  .with(
+    { prop: P.intersection(P.instanceOf(A), { foo: 'bar' }) },
+    ({ prop }) => prop.foo // prop: A & { foo: 'bar' }
+  )
+  .with(
+    { prop: P.intersection(P.instanceOf(A), { foo: 'baz' }) },
+    ({ prop }) => prop.foo // prop: A & { foo: 'baz' }
+  )
+  .otherwise(() => '');
+```
+
