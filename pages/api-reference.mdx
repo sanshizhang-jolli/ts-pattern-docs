@@ -1,0 +1,327 @@
+## API Reference
+
+### `match`
+
+```ts
+match(value);
+```
+
+Create a `Match` object on which you can later call `.with`, `.when`, `.otherwise` and `.run`.
+
+#### Signature
+
+```ts
+function match<TInput, TOutput>(input: TInput): Match<TInput, TOutput>;
+```
+
+#### Arguments
+
+- `input`
+  - **Required**
+  - the input value your patterns will be tested against.
+
+### `.with`
+
+```ts
+match(...)
+  .with(pattern, [...patterns], handler)
+```
+
+#### Signature
+
+```ts
+function with(
+  pattern: Pattern<TInput>,
+  handler: (selections: Selections<TInput>, value: TInput) => TOutput
+): Match<TInput, TOutput>;
+
+// Overload for multiple patterns
+function with(
+  pattern1: Pattern<TInput>,
+  ...patterns: Pattern<TInput>[],
+  // no selection object is provided when using multiple patterns
+  handler: (value: TInput) => TOutput
+): Match<TInput, TOutput>;
+
+// Overload for guard functions
+function with(
+  pattern: Pattern<TInput>,
+  when: (value: TInput) => unknown,
+  handler: (
+    selection: Selection<TInput>,
+    value: TInput
+  ) => TOutput
+): Match<TInput, TOutput>;
+```
+
+#### Arguments
+
+- `pattern: Pattern<TInput>`
+  - **Required**
+  - The pattern your input must match for the handler to be called.
+  - [See all valid patterns below](#patterns)
+  - If you provide several patterns before providing the `handler`, the `with` clause will match if one of the patterns matches.
+- `when: (value: TInput) => unknown`
+  - Optional
+  - Additional condition the input must satisfy for the handler to be called.
+  - The input will match if your guard function returns a truthy value.
+  - `TInput` might be narrowed to a more precise type using the `pattern`.
+- `handler: (selections: Selections<TInput>, value: TInput) => TOutput`
+  - **Required**
+  - Function called when the match conditions are satisfied.
+  - All handlers on a single `match` case must return values of the same type, `TOutput`.
+  - `selections` is an object of properties selected from the input with the [`select` function](#select-patterns).
+  - `TInput` might be narrowed to a more precise type using the `pattern`.
+
+### `.when`
+
+```ts
+match(...)
+  .when(predicate, handler)
+```
+
+#### Signature
+
+```ts
+function when(
+  predicate: (value: TInput) => unknown,
+  handler: (value: TInput) => TOutput
+): Match<TInput, TOutput>;
+```
+
+#### Arguments
+
+- `predicate: (value: TInput) => unknown`
+  - **Required**
+  - Condition the input must satisfy for the handler to be called.
+- `handler: (value: TInput) => TOutput`
+  - **Required**
+  - Function called when the predicate condition is satisfied.
+  - All handlers on a single `match` case must return values of the same type, `TOutput`.
+
+### `.returnType`
+
+```ts
+match(...)
+  .returnType<string>()
+  .with(..., () => "has to be a string")
+  .with(..., () => "Oops".length)
+  //               ~~~~~~~~~~~~~ ❌ `number` isn't a string!
+```
+
+The `.returnType<SomeType>()` method allows you to control the return type of all of your branches of code. It accepts a single type parameter that will be used as the return type of your `match` expression. All code branches must return values assignable to this type.
+
+#### Signature
+
+```ts
+function returnType<TOutputOverride>(): Match<TInput, TOutputOverride>;
+```
+
+#### Type arguments
+
+- `TOutputOverride`
+  - The type that your `match` expression will return. All branches must return values assignable to it.
+
+### `.exhaustive`
+
+```ts
+match(...)
+  .with(...)
+  .exhaustive()
+```
+
+Runs the pattern-matching expression and returns its result. It also enables exhaustiveness checking, making sure that we have handled all possible cases **at compile time**.
+
+By default, `.exhaustive()` will throw an error if the input value wasn't handled by any `.with(...)` clause. This should only happen if your types are incorrect.
+
+It is possible to pass your own handler function as a parameter to decide what should happen if an unexpected value has been received. You can for example throw your own custom error:
+
+```ts
+match(...)
+  .with(...)
+  .exhaustive((unexpected: unknown) => {
+    throw MyCustomError(unexpected);
+  })
+```
+
+Or log an error and return a default value:
+
+```ts
+match<string, number>(...)
+  .with(P.string, (str) => str.length)
+  .exhaustive((notAString: unknown) => {
+    console.log(`received an unexpected value: ${notAString}`);
+    return 0;
+  })
+```
+
+#### Signature
+
+```ts
+function exhaustive(): TOutput;
+function exhaustive(handler: (unexpectedValue: unknown) => TOutput): TOutput;
+```
+
+#### Example
+
+```ts
+type Permission = 'editor' | 'viewer';
+type Plan = 'basic' | 'pro';
+
+const fn = (org: Plan, user: Permission) =>
+  match([org, user])
+    .with(['basic', 'viewer'], () => {})
+    .with(['basic', 'editor'], () => {})
+    .with(['pro', 'viewer'], () => {})
+    // Fails with `NonExhaustiveError<['pro', 'editor']>`
+    // because the `['pro', 'editor']` case isn't handled.
+    .exhaustive();
+
+const fn2 = (org: Plan, user: Permission) =>
+  match([org, user])
+    .with(['basic', 'viewer'], () => {})
+    .with(['basic', 'editor'], () => {})
+    .with(['pro', 'viewer'], () => {})
+    .with(['pro', 'editor'], () => {})
+    .exhaustive(); // Works!
+```
+
+### `.otherwise`
+
+```ts
+match(...)
+  .with(...)
+  .otherwise(defaultHandler)
+```
+
+Runs the pattern-matching expression with a default handler which will be called if no previous `.with()` clause match the input value, and returns the result.
+
+#### Signature
+
+```ts
+function otherwise(defaultHandler: (value: TInput) => TOutput): TOutput;
+```
+
+#### Arguments
+
+- `defaultHandler: (value: TInput) => TOutput`
+  - **Required**
+  - Function called if no pattern matched the input value.
+  - Think of it as the `default:` case of `switch` statements.
+  - All handlers on a single `match` case must return values of the same type, `TOutput`.
+
+### `.run`
+
+```ts
+match(...)
+  .with(...)
+  .run()
+```
+
+returns the result of the pattern-matching expression, or **throws** if no pattern matched the input. `.run()` is similar to `.exhaustive()`, but is **unsafe** because exhaustiveness is not checked at compile time, so you have no guarantees that all cases are indeed covered. Use at your own risks.
+
+#### Signature
+
+```ts
+function run(): TOutput;
+```
+
+### `.narrow`
+
+```ts
+match(...)
+  .with(...)
+  .narrow()
+  .with(...)
+```
+
+The `.narrow()` method deeply narrows the input type to exclude all values that have previously been handled. This is useful when you want to exclude cases from union types or nullable properties that are deeply nested.
+
+Note that handled case of top-level union types are excluded by default, without calling `.narrow()`.
+
+#### Signature
+
+```ts
+function narrow(): Match<Narrowed<TInput>, TOutput>;
+```
+
+#### Example
+
+```ts
+type Input = { color: 'red' | 'blue'; size: 'small' | 'large' };
+
+declare const input: Input;
+
+const result = match(input)
+  .with({ color: 'red', size: 'small' }, (red) => `Red: ${red.size}`)
+  .with({ color: 'blue', size: 'large' }, (red) => `Red: ${red.size}`)
+  .narrow() // 👈
+  .otherwise((narrowedInput) => {
+    // narrowedInput:
+    // | { color: 'red'; size: 'large' }
+    // | { color: 'blue'; size: 'small' }
+  });
+```
+
+### `isMatching`
+
+```ts
+if (isMatching(pattern, value))  {
+  ...
+}
+```
+
+`isMatching` is a type guard function which checks if a pattern matches a given value. It is _curried_, which means it can be used in two ways.
+
+With a single argument:
+
+```ts
+import { isMatching, P } from 'ts-pattern';
+
+const isBlogPost = isMatching({
+  type: 'blogpost',
+  title: P.string,
+  description: P.string,
+});
+
+if (isBlogPost(value)) {
+  // value: { type: 'blogpost', title: string, description: string }
+}
+```
+
+With two arguments:
+
+```ts
+const blogPostPattern = {
+  type: 'blogpost',
+  title: P.string,
+  description: P.string,
+} as const;
+
+if (isMatching(blogPostPattern, value)) {
+  // value: { type: 'blogpost', title: string, description: string }
+}
+```
+
+#### Signature
+
+```ts
+export function isMatching<p extends Pattern<any>>(
+  pattern: p
+): (value: any) => value is InvertPattern<p>;
+export function isMatching<p extends Pattern<any>>(
+  pattern: p,
+  value: any
+): value is InvertPattern<p>;
+```
+
+#### Arguments
+
+- `pattern: Pattern<any>`
+  - **Required**
+  - The pattern a value should match.
+- `value?: any`
+  - **Optional**
+  - if a value is given as second argument, `isMatching` will return a boolean telling us whether the pattern matches the value or not.
+  - if we only give the pattern to the function, `isMatching` will return another **type guard function** taking a value and returning a boolean which tells us whether the pattern matches the value or not.
+

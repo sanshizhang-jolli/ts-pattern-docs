@@ -1,0 +1,367 @@
+## `P.string` predicates
+
+`P.string` has a number of methods to help you match on specific strings.
+
+### `P.string.startsWith`
+
+`P.string.startsWith(str)` matches strings that start with the provided string.
+
+```ts
+const fn = (input: string) =>
+  match(input)
+    .with(P.string.startsWith('TS'), () => '🎉')
+    .otherwise(() => '❌');
+
+console.log(fn('TS-Pattern')); // logs '🎉'
+```
+
+### `P.string.endsWith`
+
+`P.string.endsWith(str)` matches strings that end with the provided string.
+
+```ts
+const fn = (input: string) =>
+  match(input)
+    .with(P.string.endsWith('!'), () => '🎉')
+    .otherwise(() => '❌');
+
+console.log(fn('Hola!')); // logs '🎉'
+```
+
+### `P.string.minLength`
+
+`P.string.minLength(min)` matches strings with at least `min` characters.
+
+```ts
+const fn = (input: string) =>
+  match(input)
+    .with(P.string.minLength(2), () => '🎉')
+    .otherwise(() => '❌');
+
+console.log(fn('two')); // logs '🎉'
+```
+
+### `P.string.length`
+
+`P.string.length(len)` matches strings with exactly `len` characters.
+
+```ts
+const fn = (input: string) =>
+  match(input)
+    .with(P.string.length(2), () => '🎉')
+    .otherwise(() => '❌');
+
+console.log(fn('ok')); // logs '🎉'
+```
+
+### `P.string.maxLength`
+
+`P.string.maxLength(max)` matches strings with at most `max` characters.
+
+```ts
+const fn = (input: string) =>
+  match(input)
+    .with(P.string.maxLength(5), () => '🎉')
+    .otherwise(() => 'too long');
+
+console.log(fn('is this too long?')); // logs 'too long'
+```
+
+### `P.string.includes`
+
+`P.string.includes(str)` matches strings that contain the provided substring.
+
+```ts
+const fn = (input: string) =>
+  match(input)
+    .with(P.string.includes('!'), () => '✅')
+    .otherwise(() => '❌');
+
+console.log(fn('Good job! 🎉')); // logs '✅'
+```
+
+### `P.string.regex`
+
+`P.string.regex(RegExp)` matches strings if they match the provided regular expression.
+
+```ts
+const fn = (input: string) =>
+  match(input)
+    .with(P.string.regex(/^[a-z]+$/), () => 'single word')
+    .otherwise(() => 'other strings');
+
+console.log(fn('gabriel')); // logs 'single word'
+```
+
+## `P.number` and `P.bigint` predicates
+
+`P.number` and `P.bigint` have several of methods to help you match on specific numbers and bigints.
+
+### `P.number.between`
+
+`P.number.between(min, max)` matches numbers between `min` and `max`.
+
+```ts
+const fn = (input: number) =>
+  match(input)
+    .with(P.number.between(1, 5), () => '✅')
+    .otherwise(() => '❌');
+
+console.log(fn(3), fn(1), fn(5), fn(7)); // logs '✅ ✅ ✅ ❌'
+```
+
+### `P.number.lt`
+
+`P.number.lt(max)` matches numbers smaller than `max`.
+
+```ts
+const fn = (input: number) =>
+  match(input)
+    .with(P.number.lt(7), () => '✅')
+    .otherwise(() => '❌');
+
+console.log(fn(2), fn(7)); // logs '✅ ❌'
+```
+
+### `P.number.gt`
+
+`P.number.gt(min)` matches numbers greater than `min`.
+
+```ts
+const fn = (input: number) =>
+  match(input)
+    .with(P.number.gt(7), () => '✅')
+    .otherwise(() => '❌');
+
+console.log(fn(12), fn(7)); // logs '✅ ❌'
+```
+
+### `P.number.lte`
+
+`P.number.lte(max)` matches numbers smaller than or equal to `max`.
+
+```ts
+const fn = (input: number) =>
+  match(input)
+    .with(P.number.lte(7), () => '✅')
+    .otherwise(() => '❌');
+
+console.log(fn(7), fn(12)); // logs '✅ ❌'
+```
+
+### `P.number.gte`
+
+`P.number.gte(min)` matches numbers greater than or equal to `min`.
+
+```ts
+const fn = (input: number) =>
+  match(input)
+    .with(P.number.gte(7), () => '✅')
+    .otherwise(() => '❌');
+
+console.log(fn(7), fn(2)); // logs '✅ ❌'
+```
+
+### `P.number.int`
+
+`P.number.int()` matches integers.
+
+```ts
+const fn = (input: number) =>
+  match(input)
+    .with(P.number.int(), () => '✅')
+    .otherwise(() => '❌');
+
+console.log(fn(12), fn(-3.141592)); // logs '✅ ❌'
+```
+
+### `P.number.finite`
+
+`P.number.finite()` matches all numbers except `Infinity` and `-Infinity`.
+
+```ts
+const fn = (input: number) =>
+  match(input)
+    .with(P.number.finite(), () => '✅')
+    .otherwise(() => '❌');
+
+console.log(fn(-3.141592), fn(Infinity)); // logs '✅ ❌'
+```
+
+### `P.number.positive`
+
+`P.number.positive()` matches positive numbers.
+
+```ts
+const fn = (input: number) =>
+  match(input)
+    .with(P.number.positive(), () => '✅')
+    .otherwise(() => '❌');
+
+console.log(fn(7), fn(-3.141592)); // logs '✅ ❌'
+```
+
+### `P.number.negative`
+
+`P.number.negative()` matches negative numbers.
+
+```ts
+const fn = (input: number) =>
+  match(input)
+    .with(P.number.negative(), () => '✅')
+    .otherwise(() => '❌');
+
+console.log(fn(-3.141592), fn(7)); // logs '✅ ❌'
+```
+
+## Types
+
+### `P.infer`
+
+`P.infer<typeof somePattern>` lets you infer a type of value from a type of pattern.
+
+It's particularly useful when validating an API response.
+
+```ts
+const postPattern = {
+  title: P.string,
+  content: P.string,
+  stars: P.number.between(1, 5).optional(),
+  author: {
+    firstName: P.string,
+    lastName: P.string.optional(),
+    followerCount: P.number,
+  },
+} as const;
+
+type Post = P.infer<typeof postPattern>;
+
+// posts: Post[]
+const posts = await fetch(someUrl)
+  .then((res) => res.json())
+  .then((res: unknown): Post[] =>
+    isMatching({ data: P.array(postPattern) }, res) ? res.data : []
+  );
+```
+
+Although not strictly necessary, using `as const` after the pattern definition ensures that TS-Pattern infers the most precise types possible.
+
+### `P.narrow`
+
+`P.narrow<Input, typeof Pattern>` will narrow the input type to only keep the set of values that are compatible with the provided pattern type.
+
+```ts
+type Input = ['a' | 'b' | 'c', 'a' | 'b' | 'c'];
+const Pattern = ['a', P.union('a', 'b')] as const;
+
+type Narrowed = P.narrow<Input, typeof Pattern>;
+//     ^? ['a', 'a' | 'b']
+```
+
+Note that most of the time, the `match` and `isMatching` functions perform narrowing for you, and you do not need to narrow types yourself.
+
+### `P.Pattern`
+
+`P.Pattern<T>` is the type of all possible pattern for a generic type `T`.
+
+```ts
+type User = { name: string; age: number };
+
+const userPattern: Pattern<User> = {
+  name: 'Alice',
+};
+```
+
+### Type inference
+
+TS-Pattern takes advantage the most advanced features of TypeScript to perform type narrowing and accurate exhaustive matching, even when matching on complex data-structures.
+
+Here are some examples of TS-Pattern's type inference features.
+
+#### Type narrowing
+
+When pattern-matching on a input containing union types, TS-Pattern will infer the most precise type possible for the argument of your handler function using the pattern you provide.
+
+```ts
+type Text = { type: 'text'; data: string };
+type Img = { type: 'img'; data: { src: string; alt: string } };
+type Video = { type: 'video'; data: { src: string; format: 'mp4' | 'webm' } };
+type Content = Text | Img | Video;
+
+const formatContent = (content: Content): string =>
+  match(content)
+    .with({ type: 'text' }, (text /* : Text */) => '<p>...</p>')
+    .with({ type: 'img' }, (img /* : Img */) => '<img ... />')
+    .with({ type: 'video' }, (video /* : Video */) => '<video ... />')
+    .with(
+      { type: 'img' },
+      { type: 'video' },
+      (video /* : Img | Video */) => 'img or video'
+    )
+    .with(
+      { type: P.union('img', 'video') },
+      (video /* : Img | Video */) => 'img or video'
+    )
+    .exhaustive();
+```
+
+When using `P.select` in a pattern, TS-Pattern will find and inject the selected value in your handler. The type of your handler's argument is inferred accordingly.
+
+```ts
+const formatContent = (content: Content): string =>
+  match(content)
+    .with(
+      { type: 'text', data: P.select() },
+      (content /* : string */) => '<p>...</p>'
+    )
+    .with(
+      { type: 'video', data: { format: P.select() } },
+      (format /* : 'mp4' | 'webm' */) => '<video ... />'
+    )
+    .with(
+      { type: P.union('img', 'video'), data: P.select() },
+      (data /* : Img['data'] | Video['data'] */) => 'img or video'
+    )
+    .exhaustive();
+```
+
+#### Type guard function
+
+If you pass a [type guard](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#using-type-predicates) function to `P.when`, TS-Pattern will use its return type to narrow the input.
+
+```ts
+const isString = (x: unknown): x is string => typeof x === 'string';
+
+const isNumber = (x: unknown): x is number => typeof x === 'number';
+
+const fn = (input: { id: number | string }) =>
+  match(input)
+    .with({ id: P.when(isString) }, (narrowed /* : { id: string } */) => 'yes')
+    .with({ id: P.when(isNumber) }, (narrowed /* : { id: number } */) => 'yes')
+    .exhaustive();
+```
+
+#### Exhaustiveness checking
+
+TS-Pattern will keep track of handled and unhandled cases of your input type. Even when pattern-matching on several union types at once, you only need to call `.exhaustive()` to make sure that all possible cases are correctly handled.
+
+```ts
+type Permission = 'editor' | 'viewer';
+type Plan = 'basic' | 'pro';
+
+const fn = (org: Plan, user: Permission): string =>
+  match([org, user])
+    .with(['basic', 'viewer'], () => {})
+    .with(['basic', 'editor'], () => {})
+    .with(['pro', 'viewer'], () => {})
+    // Fails with `NonExhaustiveError<['pro', 'editor']>`
+    // because the `['pro', 'editor']` case isn't handled.
+    .exhaustive();
+```
+
+## Inspirations
+
+This library has been heavily inspired by this great article by Wim Jongeneel:
+[Pattern Matching in TypeScript with Record and Wildcard Patterns](https://medium.com/swlh/pattern-matching-in-typescript-with-record-and-wildcard-patterns-6097dd4e471d).
+It made me realize pattern matching could be implemented in userland and we didn't have
+to wait for it to be added to the language itself. I'm really grateful for that 🙏
