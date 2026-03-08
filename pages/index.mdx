@@ -1,0 +1,67 @@
+# TS-Pattern
+
+The exhaustive Pattern Matching library for [TypeScript](https://github.com/microsoft/TypeScript) with smart type inference.
+
+```tsx
+import { match, P } from 'ts-pattern';
+
+type Data =
+  | { type: 'text'; content: string }
+  | { type: 'img'; src: string };
+
+type Result =
+  | { type: 'ok'; data: Data }
+  | { type: 'error'; error: Error };
+
+const result: Result = { type: 'ok', data: { type: 'text', content: 'Hello!' } };
+
+const html = match(result)
+  .with({ type: 'error' }, () => '<p>Oops! An error occurred</p>')
+  .with({ type: 'ok', data: { type: 'text' } }, (res) => `<p>${res.data.content}</p>`)
+  .with({ type: 'ok', data: { type: 'img', src: P.select() } }, (src) => `<img src="${src}" />`)
+  .exhaustive();
+```
+
+## About
+
+Write **better** and **safer conditions**. Pattern matching lets you express complex conditions in a single, compact expression. Your code becomes **shorter** and **more readable**. Exhaustiveness checking ensures you haven't forgotten **any possible case**.
+
+## Features
+
+- Pattern-match on **any data structure**: nested Objects, Arrays, Tuples, Sets, Maps and all primitive types.
+- **Typesafe**, with helpful type inference.
+- **Exhaustiveness checking** with `.exhaustive()`.
+- Validate data shape with `isMatching`.
+- Expressive API: `P._`, `P.string`, `P.number`, `P.when`, `P.not`, `P.select`, and more.
+- Supports **predicates**, **unions**, **intersections** and **exclusion** patterns.
+- Tiny bundle footprint (**only ~2kB**).
+
+## Installation
+
+```sh
+npm install ts-pattern
+```
+
+```sh
+pnpm add ts-pattern
+# OR
+yarn add ts-pattern
+# OR
+bun add ts-pattern
+```
+
+## What is Pattern Matching?
+
+[Pattern Matching](https://en.wikipedia.org/wiki/Pattern_matching) is a code-branching technique from functional programming that's more powerful and often less verbose than imperative alternatives (if/else/switch statements), especially for complex conditions.
+
+Read the introduction blog post: [Bringing Pattern Matching to TypeScript 🎨 Introducing TS-Pattern](https://dev.to/gvergnaud/bringing-pattern-matching-to-typescript-introducing-ts-pattern-v3-0-o1k)
+
+## Sandbox Examples
+
+- [Basic Demo](https://stackblitz.com/edit/vitejs-vite-qrk8po?file=src%2Fexamples%2Fbasic.tsx)
+- [React gif fetcher app Demo](https://stackblitz.com/edit/ts-pattern-gifs?file=src%2FApp.tsx)
+- [React.useReducer Demo](https://stackblitz.com/edit/ts-pattern-reducer?file=src%2FApp.tsx)
+- [Handling untyped API response Demo](https://stackblitz.com/edit/vitejs-vite-qrk8po?file=src%2Fexamples%2Fapi.tsx)
+- [`P.when` Guard Demo](https://stackblitz.com/edit/vitejs-vite-qrk8po?file=src%2Fexamples%2Fwhen.tsx)
+- [`P.not` Pattern Demo](https://stackblitz.com/edit/vitejs-vite-qrk8po?file=src%2Fexamples%2Fnot.tsx)
+- [`P.select` Pattern Demo](https://stackblitz.com/edit/vitejs-vite-qrk8po?file=src%2Fexamples%2Fselect.tsx)
