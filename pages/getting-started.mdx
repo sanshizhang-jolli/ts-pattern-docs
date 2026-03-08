@@ -33,7 +33,6 @@ To avoid unwanted state changes that could lead to bugs, we want our state reduc
 
 This is a case where `match` really shines. Instead of writing nested switch statements, we can use pattern matching to simultaneously check the state and the event object:
 
-<!-- prettier-ignore -->
 ```ts
 import { match, P } from 'ts-pattern';
 
@@ -72,7 +71,6 @@ There's a lot going on, so **let's go through this code bit by bit:**
 
 `match` takes a value and returns a [_builder_](https://en.wikipedia.org/wiki/Builder_pattern) on which you can add your pattern matching cases.
 
-<!-- prettier-ignore -->
 ```ts
 match([state, event])
 ```
